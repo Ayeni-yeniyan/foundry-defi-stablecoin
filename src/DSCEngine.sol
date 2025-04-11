@@ -265,6 +265,13 @@ contract DSCEngine is ReentrancyGuard {
             uint256 totalDscMinted,
             uint256 collateralValueInUsd
         ) = _getAccountInformation(user);
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
+    function _calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    ) private pure returns (uint256) {
         // If totalDsxMinted is zero, then the healthfactor is good!
         if (totalDscMinted == 0) {
             return type(uint256).max;
@@ -387,5 +394,15 @@ contract DSCEngine is ReentrancyGuard {
         address user
     ) external view returns (uint256 userHealthFactor) {
         userHealthFactor = _healthFactor(user);
+    }
+
+    function calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    ) external pure returns (uint256 userHealthFactor) {
+        userHealthFactor = _calculateHealthFactor(
+            totalDscMinted,
+            collateralValueInUsd
+        );
     }
 }
