@@ -46,6 +46,10 @@ import {AggregatorV3Interface} from "@chainlink/src/v0.8/interfaces/AggregatorV3
 contract DSCEngine is ReentrancyGuard {
     // Errors
     error DSCEngine__NeedsMoreThanZero();
+    error DSCEngine__WithdrawalGreaterThanCollateral(
+        uint256 withdrawAmount,
+        uint256 collateral
+    );
     error DSCEngine__TokenAddressesAndPricefeedAddressesNotEqual();
     error DSCEngine__DscAddressCannotBeZeroAddress();
     error DSCEngine__TokenAddressNotAllowed();
@@ -169,6 +173,7 @@ contract DSCEngine is ReentrancyGuard {
             msg.sender,
             msg.sender
         );
+
         _revertIfHealthFactorIsBroken(msg.sender);
     }
 
@@ -300,7 +305,20 @@ contract DSCEngine is ReentrancyGuard {
         uint256 amountCollateral,
         address from,
         address to
-    ) private moreThanZero(amountCollateral) {
+    )
+        private
+        moreThanZero(amountCollateral)
+        isAllowedToken(tokenCollateralAddress)
+    {
+        if (
+            s_collateralsDeposited[from][tokenCollateralAddress] <
+            amountCollateral
+        ) {
+            revert DSCEngine__WithdrawalGreaterThanCollateral(
+                amountCollateral,
+                s_collateralsDeposited[from][tokenCollateralAddress]
+            );
+        }
         s_collateralsDeposited[from][
             tokenCollateralAddress
         ] -= amountCollateral;
@@ -378,8 +396,6 @@ contract DSCEngine is ReentrancyGuard {
             (uint256(price) * ADDITIONAL_FEED_PRECISION * amount) / PRECISION;
     }
 
-    // Visible for testing only
-
     function getAccountInformation(
         address user
     )
@@ -396,6 +412,13 @@ contract DSCEngine is ReentrancyGuard {
         userHealthFactor = _healthFactor(user);
     }
 
+    function getUserCollateralForToken(
+        address user,
+        address collateral
+    ) external view returns (uint256 userTokenDeposited) {
+        userTokenDeposited = s_collateralsDeposited[user][collateral];
+    }
+
     function calculateHealthFactor(
         uint256 totalDscMinted,
         uint256 collateralValueInUsd
@@ -404,5 +427,9 @@ contract DSCEngine is ReentrancyGuard {
             totalDscMinted,
             collateralValueInUsd
         );
+    }
+
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
     }
 }
